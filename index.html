@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat App</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #C1E947;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    #messages {
+      list-style-type: none;
+      margin: 0;
+      padding: 20px;
+      flex-grow: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column; /* Añadido para que los mensajes se muestren de arriba a abajo */
+    }
+
+    #form {
+      display: flex;
+      justify-content: space-between;
+      padding: 20px;
+      background-color: #fff;
+      border-top: 1px solid #ddd;
+    }
+
+    #form input {
+      flex-grow: 1;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-right: 10px;
+    }
+
+    #form button {
+      padding: 10px 15px;
+      background-color: #3498db;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    #form button:hover {
+      background-color: #2980b9;
+    }
+
+    #messages li {
+      margin-bottom: 10px;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      max-width: 70%; /* Ajusta el ancho máximo del mensaje */
+      word-wrap: break-word;
+      display: inline-block; /* Añadido para permitir el ajuste automático del ancho */
+    }
+
+    .align-right {
+      align-self: flex-end;
+      background-color: #3498db;
+      color: #fff;
+      border-radius: 8px; /* Añadido para que los mensajes enviados tengan bordes redondeados */
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Añadido para sombra en mensajes enviados */
+      margin-left: auto; /* Añadido para asegurar la alineación a la derecha */
+      max-width: 70%; /* Ajusta el ancho máximo del mensaje */
+      word-wrap: break-word;
+      display: inline-block; /* Añadido para permitir el ajuste automático del ancho */
+    }
+
+    .align-left {
+      align-self: flex-start;
+      background-color: #fff; /* Color de fondo para mensajes recibidos */
+      color: #000; /* Color de texto para mensajes recibidos */
+      display: inline-block; /* Añadido para permitir el ajuste automático del ancho */
+    }
+   
+    .timestamp {
+      font-size: 10px; /* Tamaño de fuente más pequeño para la hora */
+      margin-left: 10px; /* Margen a la izquierda del tiempo para separarlo del mensaje principal */
+      color: #000; /* Color gris para la hora */
+    }
+  </style>
+</head>
+<body>
+  <ul id="messages"></ul>
+  <form id="form" action="">
+    <input id="m" autocomplete="off" /><button>Enviar</button>
+  </form>
+
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    $(function () {
+      const socket = io();
+      const currentUser = getParameterByName('username');
+
+      // Manejar envío de mensajes
+      $('#form').submit(function(e) {
+        e.preventDefault();
+        const message = $('#m').val();
+        socket.emit('chat message', { username: currentUser, message, type: 'sent' });
+        $('#m').val('');
+        return false;
+      });
+
+      // Manejar recepción de mensajes almacenados
+      socket.on('load old messages', function (messages) {
+        messages.forEach(function (data) {
+          displayMessage(data);
+        });
+      });
+
+      // Manejar recepción de mensajes
+      socket.on('chat message', function(data){
+        console.log("Fecha del servidor:", data.timestamp);
+        displayMessage(data);
+      });
+
+      function displayMessage(data) {
+        const messageType = data.username === currentUser ? 'sent' : 'received';
+        const alignmentClass = messageType === 'sent' ? 'align-right' : 'align-left';
+        const messageText = messageType === 'sent' ? `Tú: ${data.message}` : `${data.username}: ${data.message}`;
+
+        // Construye el elemento de mensaje con el contenido y la hora
+        const messageElement = $('<li>').addClass(alignmentClass);
+        messageElement.text(messageText);
+
+        // Obtén la hora actual
+        //const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        // Crea un elemento de hora y aplícale la clase 'timestamp'
+        const timeElement = $('<span>').text(formatTimestamp(data.timestamp)).addClass('timestamp');
+        //const timeElement = $('<span>').text(new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })).addClass('timestamp');
+
+        // Agrega el elemento de hora al mensaje
+        messageElement.append(timeElement);
+
+        // Agrega el elemento de mensaje al área de mensajes
+        $('#messages').append(messageElement);
+
+        // Scroll automático hacia abajo para ver el nuevo mensaje
+        $('#messages').scrollTop($('#messages')[0].scrollHeight);
+      }
+
+      // Función para obtener parámetros de la URL
+      function getParameterByName(name) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(name);
+      }
+
+      function formatTimestamp(timestamp) {
+        // Formatea la marca de tiempo según tus preferencias
+        return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+
+    });
+  </script>
+</body>
+</html>
